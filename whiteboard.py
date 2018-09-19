@@ -128,10 +128,14 @@ def calc_dist(pt_px1,pt_px2):
     pt_px1,pt_px2 = px_2_utm(pt_px1),px_2_utm(pt_px2)
     return math.sqrt((float(pt_px2[0])-pt_px1[0])**2 + (float(pt_px2[1])-pt_px1[1])**2)
 
-
+'''
 collision_polygon_dict = dict()
 cnb = [((511,-324), (481,-363)),((498,-211) , (507,-260)),((251,-230) , (267,-281)),((282,-351) , (270,-302))]
 for i,p in enumerate(cnb):
     dist = calc_dist(p[0], p[1])
     collision_polygon_dict[i+1] = (p[0],dist)
 print(collision_polygon_dict)
+'''
+x_list=[1,2,3,4,5,6,7,8,9,10]
+_x = list(range(0,len(x_list)-1,5))
+print(_x)
