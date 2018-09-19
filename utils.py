@@ -393,8 +393,8 @@ def dist_2_regulatory_stop(vehicle_info,env_info,meta_info):
                 veh_lane_id = str(veh_lane_id) + "_1"
             c.execute("SELECT location_px_x,location_px_y FROM tracks where vehicle_id="+str(veh_id)+" order by frame_id")
             d_list = c.fetchall()
-            dist_to_roundabout = calc_dist_along_path(pt1_px, pt2_px, d_list) - radius
-            if int(v['lane_id']) in yielding_precendence[int(veh_lane_id)] and meta_info['ttc'][veh_id][str(v['id'])] < 7:   
+            dist_to_roundabout = max(calc_dist_along_path(pt1_px, pt2_px, d_list) - radius,0)
+            if int(v['lane_id']) in yielding_precendence[int(veh_lane_id)]:# and meta_info['ttc'][veh_id][str(v['id'])] < 7:   
                 dist_to_reg_stops = dist_to_roundabout
     conn.close()
     if int(veh_lane_id) in exit_lanes:
