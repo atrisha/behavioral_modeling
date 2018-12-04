@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from utils import px_2_utm, get_lane
 import itertools
 import math
+import random
+import matplotlib.pyplot as plt
 
 fps = 30
 def parse_for_tracks():
@@ -79,13 +81,15 @@ def parse_for_lanes():
             for i in range(len(x_points)):
                 print(i)
                 print("INSERT INTO lanes VALUES ('"+str(lane_id)+"',"+str(i)+","+str(x_points[i])+","+str(y_points[i])+","+str(x_points_utm[i])+","+str(y_points_utm[i])+")")
-                c.execute("INSERT INTO lanes VALUES ('"+str(lane_id)+"',"+str(i)+","+str(x_points[i])+","+str(y_points[i])+","+str(x_points_utm[i])+","+str(y_points_utm[i])+")")
+                #c.execute("INSERT INTO lanes VALUES ('"+str(lane_id)+"',"+str(i)+","+str(x_points[i])+","+str(y_points[i])+","+str(x_points_utm[i])+","+str(y_points_utm[i])+")")
             #text_indx = random.randint(0,len(x_points)-1)
             #rgb = [random.uniform(0, 1),random.uniform(0, 1),random.uniform(0, 1)]
             #plt.text(x_points[text_indx], y_points[text_indx],lane_id,color=rgb)
             #plt.plot(x_points,y_points,color=rgb)
+    #plt.show()        
     conn.commit()
     conn.close()  
+parse_for_lanes()
     
 def parse_for_paths():
     conn = sqlite3.connect('db/trajectories.db')

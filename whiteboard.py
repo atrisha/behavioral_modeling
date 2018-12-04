@@ -136,6 +136,12 @@ for i,p in enumerate(cnb):
     collision_polygon_dict[i+1] = (p[0],dist)
 print(collision_polygon_dict)
 '''
-x_list=[1,2,3,4,5,6,7,8,9,10]
-_x = list(range(0,len(x_list)-1,5))
-print(_x)
+
+'''
+x_list=[1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7]
+_x = list(range(0,len(x_list),4))
+print(_x)'''
+
+x = []
+x = x + [1,2,3]
+print(x)

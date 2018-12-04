@@ -11,7 +11,7 @@ from shapely.geometry.polygon import Polygon
 import math
 from prompt_toolkit.key_binding.bindings.named_commands import complete
 from math import inf
-from sumolib.net import lane
+
 
 
 
