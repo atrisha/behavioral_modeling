@@ -11,6 +11,8 @@ import csv
 import time
 import datetime
 import numpy as np
+from utils import root_path
+from utils import data_path
 
 def flush_to_file(data_buffer,dir_path):
     for key,val in data_buffer.items():
@@ -24,7 +26,7 @@ def flush_to_file(data_buffer,dir_path):
     
 
 def generate_device_list_files():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file = 'device_trip_list.csv'
     line_count = 0
     device_trip_list = []
@@ -34,7 +36,7 @@ def generate_device_list_files():
             if line_count !=0:
                 device_trip_list.append(row)
             line_count = line_count + 1
-    dir_path = '/media/atrisha/Data/datasets/SPMD/DataLane/csv_files/' 
+    dir_path = data_path+'DataLane/csv_files/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -52,10 +54,10 @@ def generate_device_list_files():
                     else:
                         data_buffer[str(row[0])+'-'+str(row[1])] = [row]
                 line_count = line_count + 1
-        data_buffer = flush_to_file(data_buffer,'/media/atrisha/Data/datasets/SPMD/processing_lists/device_trip_data/')
+        data_buffer = flush_to_file(data_buffer,root_path+'device_trip_data/')
 
 def generate_wsu_devise_files():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file = 'device_trip_list.csv'
     line_count = 0
     device_trip_list = []
@@ -65,7 +67,7 @@ def generate_wsu_devise_files():
             if line_count !=0:
                 device_trip_list.append(row)
             line_count = line_count + 1
-    dir_path = '/media/atrisha/Data/datasets/SPMD/DataWsu/csv_files/' 
+    dir_path = data_path+'DataWsu/csv_files/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -83,11 +85,11 @@ def generate_wsu_devise_files():
                     else:
                         data_buffer[str(row[0])+'-'+str(row[1])] = [row]
                 line_count = line_count + 1
-        data_buffer = flush_to_file(data_buffer,'/media/atrisha/Data/datasets/SPMD/processing_lists/wsu_data/')
+        data_buffer = flush_to_file(data_buffer,root_path+'wsu_data/')
 
 
 def generate_front_target_devise_files():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file = 'device_trip_list.csv'
     line_count = 0
     device_trip_list = []
@@ -97,7 +99,7 @@ def generate_front_target_devise_files():
             if line_count !=0:
                 device_trip_list.append(row)
             line_count = line_count + 1
-    dir_path = '/media/atrisha/Data/datasets/SPMD/DataFrontTargets/csv_files/' 
+    dir_path = data_path+'DataFrontTargets/csv_files/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -115,7 +117,7 @@ def generate_front_target_devise_files():
                     else:
                         data_buffer[str(row[0])+'-'+str(row[1])] = [row]
                 line_count = line_count + 1
-        data_buffer = flush_to_file(data_buffer,'/media/atrisha/Data/datasets/SPMD/processing_lists/front_target_data/')
+        data_buffer = flush_to_file(data_buffer,root_path+'front_target_data/')
 
 
 def check_for_lane_change(data_window,for_left_side):
@@ -139,7 +141,7 @@ def check_for_lane_change(data_window,for_left_side):
     return lane_change,cross_time
 
 def flush_to_lan_change_file(lane_change_buffer):
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     out_file_name = 'lane_change_event.csv'
     with open(dir_path+out_file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -148,7 +150,7 @@ def flush_to_lan_change_file(lane_change_buffer):
                 
 
 def detect_lane_change_events():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/device_trip_data/' 
+    dir_path = root_path+'device_trip_data/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -165,7 +167,7 @@ def detect_lane_change_events():
                 data_buffer.append(row)
         if len(data_buffer) >=10:
             cross_time_l,cross_time_r = None,None
-            for ind in range(len(data_buffer)-10):
+            for ind in np.arange(len(data_buffer)-10):
                 one_second_data = data_buffer[ind:ind+10]
                 one_wheel_change,time_1 = check_for_lane_change(one_second_data,True)
                 if one_wheel_change:
@@ -183,7 +185,7 @@ def detect_lane_change_events():
                             #print(line_entry)
                         
         
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     out_file_name = 'lane_change_event.csv'
     with open(dir_path+out_file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -193,7 +195,7 @@ def detect_lane_change_events():
 
 def get_lane_change_list():
     lane_change_dict = dict()
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file_name = 'lane_change_event.csv'
     with open(dir_path+str(file_name)) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -213,7 +215,7 @@ def get_lane_change_list():
         
             
 def flush_cut_ins(cut_in_list):  
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     out_file_name = 'cut_in_events.csv'
     with open(dir_path+out_file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -225,7 +227,7 @@ def flush_cut_ins(cut_in_list):
     
 def detect_cut_ins():
     lane_change_list = get_lane_change_list()
-    dir_path = '/media/atrisha/Data/datasets/SPMD/DataFrontTargets/csv_files/' 
+    dir_path = data_path+'DataFrontTargets/csv_files/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -261,7 +263,7 @@ def detect_cut_ins():
                                     cut_in_list = flush_cut_ins(cut_in_list)
             
                                 
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     out_file_name = 'cut_in_events.csv'
     with open(dir_path+out_file_name, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -270,7 +272,7 @@ def detect_cut_ins():
     return cut_in_list            
                              
 def remove_pedestrians_from_all_cut_ins():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     in_file_name = 'cut_in_events.csv'
     out_file_name = 'vehicle_cut_in_events.csv'
     with open(dir_path+in_file_name, 'r', newline='') as inp, \
@@ -288,7 +290,7 @@ def flush_to_new_file(file_path,data_list):
     
 
 def create_data_wsu_for_cut_ins():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file_name = 'cut_in_events.csv'
     cut_in_dict = dict()
     with open(dir_path+file_name, 'r', newline='') as csv_file:
@@ -300,7 +302,7 @@ def create_data_wsu_for_cut_ins():
                 cut_in_dict[row[0]+'-'+row[1]] = [row[2]]
             
     
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/wsu_data/' 
+    dir_path = root_path+'wsu_data/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -316,10 +318,10 @@ def create_data_wsu_for_cut_ins():
             for entry in data_buffer:
                 if entry[2] in cut_in_dict[str(file)[:-4]]:
                     wsu_cut_in_list.append(entry)
-    flush_to_new_file('/media/atrisha/Data/datasets/SPMD/processing_lists/wsu_cut_in_list.csv',wsu_cut_in_list)
+    flush_to_new_file(root_path+'wsu_cut_in_list.csv',wsu_cut_in_list)
 
 def create_wsu_sequence_for_cutins():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file_name = 'wsu_cut_in_list.csv'
     time_seq_dict = dict()
     with open(dir_path+file_name, 'r', newline='') as csv_file:
@@ -333,10 +335,10 @@ def create_wsu_sequence_for_cutins():
     for k,v in time_seq_dict.items():
         seq_with_added_time = list(v)
         for _time in v:
-            for _next_time in range(_time-500,_time+510,10):
+            for _next_time in np.arange(_time-500,_time+510,10):
                 seq_with_added_time.append(_next_time)
         time_seq_dict[k] = sorted(seq_with_added_time)
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/wsu_data/' 
+    dir_path = root_path+'wsu_data/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -353,11 +355,11 @@ def create_wsu_sequence_for_cutins():
             for entry in data_buffer:
                 if int(entry[2]) in time_seq_dict[str(file)[:-4]]:
                     wsu_cut_in_list.append(entry)
-            flush_to_new_file('/media/atrisha/Data/datasets/SPMD/processing_lists/wsu_seq_data_for_cutins/'+str(file),wsu_cut_in_list)
+            flush_to_new_file(root_path+'wsu_seq_data_for_cutins/'+str(file),wsu_cut_in_list)
 
 
 def create_front_target_sequence_for_cutins():
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
+    dir_path = root_path
     file_name = 'vehicle_cut_in_events.csv'
     time_seq_dict = dict()
     with open(dir_path+file_name, 'r', newline='') as csv_file:
@@ -371,10 +373,10 @@ def create_front_target_sequence_for_cutins():
     for k,v in time_seq_dict.items():
         seq_with_added_time = list(v)
         for _time in v:
-            for _next_time in range(_time-500,_time+510,10):
+            for _next_time in np.arange(_time-500,_time+510,10):
                 seq_with_added_time.append(_next_time)
         time_seq_dict[k] = sorted(seq_with_added_time)
-    dir_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/front_target_data/' 
+    dir_path = root_path+'front_target_data/' 
     filename_list = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     file_count = len(filename_list)
     filename_list.sort()
@@ -391,12 +393,12 @@ def create_front_target_sequence_for_cutins():
             for entry in data_buffer:
                 if int(entry[2]) in time_seq_dict[str(file)[:-4]]:
                     front_target_cut_in_list.append(entry)
-            flush_to_new_file('/media/atrisha/Data/datasets/SPMD/processing_lists/front_target_seq_for_cutins/'+str(file),front_target_cut_in_list)
+            flush_to_new_file(root_path+'front_target_seq_for_cutins/'+str(file),front_target_cut_in_list)
 
 
 ''' all runs below '''
 
-create_front_target_sequence_for_cutins()                    
+                    
                 
 
                         
