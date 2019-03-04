@@ -304,12 +304,14 @@ def lambda_op_run(opt_l=None):
         print(status_dict)
         print('DONE')  
     else:
-        res_file_name = root_path+'lambda_opt_res_final.list'
+        res_file_name = root_path+'lambda_opt_res_final_wu.list'
         plt.plot(X,Y)
         plt.show()
         print(list(zip(X,Y)))
         print(f_q_u_list)
         flush_list(res_file_name, f_q_u_list)
+        res_file_name = root_path+'lambda_opt_res_final_prob.list'
+        flush_list(res_file_name, list(zip(X,Y)))
                         
 def sample_vel_s(num_samples):  
     vel_bimodal_params = (16.47087736,7.401838,-18.54877962,16.4562847,-7.41718461,18.56954167)
@@ -474,13 +476,14 @@ def cross_entr_sampling(max_iters=100,N_per_iter=1000,sim_with_opt_params = True
         plt.show()  
         flush_results(res_dict,file_name)
     else:
-        res_file_name = root_path+'ce_opt_res_final.list'
+        res_file_name = root_path+'ce_opt_res_final_wu.list'
         plt.plot(X,Y)
         plt.show()
         print(list(zip(X,Y)))
         print(q_u_list)
         flush_list(res_file_name, q_u_list)
-        
+        res_file_name = root_path+'ce_opt_res_final_prob.list'
+        flush_list(res_file_name, list(zip(X,Y)))
         
         
     
@@ -492,6 +495,11 @@ def run_with_opt_vals():
     lambda_op_run(opt_l)
     cross_entr_sampling()
     cmc_run()
+    
+def run_opt_scheme():
+    lambda_op_run()
+    cross_entr_sampling(max_iters=10,sim_with_opt_params=False)
+    
     
     
 ''' all runs below '''

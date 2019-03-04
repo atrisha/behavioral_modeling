@@ -13,8 +13,8 @@ from prompt_toolkit.key_binding.bindings.named_commands import complete
 from math import inf
 
 
-root_path = '/media/atrisha/Data/datasets/SPMD/processing_lists/'
-data_path = '/media/atrisha/Data/datasets/SPMD/' 
+root_path = 'processing_lists/'
+data_path = '.' 
                 
                 
             

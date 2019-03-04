@@ -391,5 +391,5 @@ def plot_mix_exp(util_r,l1,l2,a):
 
 ''' all runs below '''
 
-mle_est()
+#mle_est()
 
