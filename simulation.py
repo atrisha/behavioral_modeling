@@ -450,8 +450,30 @@ def flush_results(res_dict,file_name):
                 dict_in_file[k] = v
         with open(file_name,'w') as file:
             file.write(json.dumps(dict_in_file))
-            
+prob_cache = dict()
+          
 def simulate_run(l,*args):
+    def _eval_exp(x,lambda_param,a,domain):
+        
+        domain_lims = domain
+        x = round(x,3)
+        if (lambda_param,a,domain) in prob_cache:
+            #domain_list = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
+            #val_index = domain_list.index(x)
+            return prob_cache[(lambda_param,a,domain)][x]
+        else:
+            domain = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
+            choice_weights = [a*(1/lambda_param) * np.exp(-1*v/lambda_param) for v in domain]
+            sum_weights = sum(choice_weights)
+            choice_weights = [v/sum_weights for v in choice_weights]
+            choice_probs = dict()
+            for idx,v in enumerate(domain):
+                choice_probs[v] = choice_weights[idx]
+            prob_cache[(lambda_param,a,domain_lims)] = choice_probs
+            prob = choice_probs[x]
+            print(prob)
+            return prob
+        
     choice_list = []
     weight_list = []
     pu_list = []
@@ -459,16 +481,18 @@ def simulate_run(l,*args):
     w_range_inv = [0.04528787, 0.00955973]
     
     distracted_policy = False
-    U_prime,global_crash_prob_dict,wfile,opt_lambda,out_iter_num = args[0],args[1],args[2],args[3],args[4]
+    U_prime,global_crash_prob_dict,wfile,opt_lambda,out_iter_num,sample_vel_s_dict = args[0],args[1],args[2],args[3],args[4],args[5]
     out_iter_num = 'NA' if out_iter_num is None else out_iter_num
     crash_count = 0
     no_crash_count = 0
     count = 0
     for k,v in U_prime.items():
+        count += 1
+        print('progress of 100000',count)
         _p_0 = (1/3) * (l[0]*np.exp(l[0]*v[0])) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/2
         _p_1 = (1/3) * (l[1]*np.exp(l[1]*v[1])) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/2
         _p_2 = (1/3) * (l[2]*np.exp(l[2]*v[2])) / (np.exp(2*l[2]) -1) if l[2]!=0 else 1/2
-        p_a = _p_0 + _p_1 + _p_2
+        p_a = (_p_0 , _p_1 , _p_2)
         choice_list.append(k)
         weight_list.append(p_a)
         speed_s = k[0]
@@ -482,14 +506,28 @@ def simulate_run(l,*args):
             idx = 1
         else:
             idx = 2
-        p_u = eval_vel_s(speed_s) * eval_exp(1/range_x,w_range_inv[0],w_range_inv[1]) * eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1])
+        
+        p_vel = sample_vel_s_dict[speed_s]
+        p_range_inv = _eval_exp(1/range_x, w_range_inv[0], w_range_inv[1], (.007,1,.001)) 
+        p_ttc_inv = _eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1],(0,4,.001)) 
+        p_u = p_vel * p_range_inv * p_ttc_inv
         pu_list.append(p_u)
+    
+        #p_u = eval_vel_s(speed_s) * eval_exp(1/range_x,w_range_inv[0],w_range_inv[1]) * eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1])
+        
     print(min(pu_list),max(pu_list),sum(pu_list))
-    print(min(weight_list),max(weight_list),sum(weight_list))    
-    orig_prob_list = list(weight_list)
-    sum_weights = sum(weight_list)
+    
+    
+    sum_weights_0 = sum([x[0] for x in weight_list])
+    sum_weights_1 = sum([x[1] for x in weight_list])
+    sum_weights_2 = sum([x[2] for x in weight_list])
+    orig_prob_list = [] 
+    for wt in weight_list:
+        orig_prob_list.append(wt[0]/sum_weights_0 * wt[1]/sum_weights_1 * wt[2]/sum_weights_2) 
     sum_pu_weights = sum(pu_list)
-    weight_list=[x/sum_weights for x in weight_list]
+    #weight_list=[x/sum_weights for x in weight_list]
+    weight_list = orig_prob_list
+    print(min(weight_list),max(weight_list),sum(weight_list))    
     pu_list=[x/sum_pu_weights for x in pu_list]
     import random
     p_u_dict,q_u_dict,vel_lc_range_samples = dict(),dict(),[]
@@ -504,25 +542,25 @@ def simulate_run(l,*args):
     print(min(y),max(y),sum(y))
     x_y = list(zip(x,y))
     x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
-    plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
+    #plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
     y = [pu_list[i] for i in vel_lc_range_sample_index]
     print(min(y),max(y),sum(y))
     x_y = list(zip(x,y))
     x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
-    plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
-    plt.show()
+    #plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
+    #plt.show()
     q_u_list = []
     for idx,val in enumerate(vel_lc_range_samples):
         traci.load(load_params)
         speed_lc = min(55,val[1])
         vel_s = min(55,val[0])
         range_x = val[2]
-        traci.vehicle.add(vehID='veh_0', routeID='route0',  depart=0,pos=0, speed=vel_s)
+        traci.vehicle.add(vehID='veh_0', routeID='route0',  depart=0,departPos=0, departSpeed=vel_s)
         traci.vehicle.moveTo('veh_0','1to2_0',0)
         traci.vehicle.setSpeedMode('veh_0',12)
         key_l = list(l)
         if not distracted_policy:
-            traci.vehicle.add(vehID='veh_1', routeID='route0',  depart=0,pos=range_x, speed=speed_lc)
+            traci.vehicle.add(vehID='veh_1', routeID='route0',  depart=0, departPos=range_x, departSpeed=speed_lc)
             traci.vehicle.moveTo('veh_1','1to2_0',range_x)
             traci.vehicle.setSpeedMode('veh_1',12)
         else:
@@ -551,6 +589,7 @@ def simulate_run(l,*args):
                     crash_count = crash_count + 1
                     q_u = q_u_dict[val]
                     p_u = p_u_dict[val]
+                    print(min(list(p_u_dict.values())),max(list(p_u_dict.values())))
                     q_u_list.append((q_u,p_u))
                     if str(key_l) in global_crash_prob_dict:
                         if distracted_policy:
@@ -579,8 +618,8 @@ def simulate_run(l,*args):
         
 def simulate_run_simple(speed_s,speed_lc,range_x,wfile,idx,crash_count,no_crash_count):
     traci.load(load_params)
-    traci.vehicle.add(vehID='veh_0', routeID='route0',  depart=0,pos=0, speed=speed_s)
-    traci.vehicle.add(vehID='veh_1', routeID='route0',  depart=0,pos=range_x, speed=speed_lc)
+    traci.vehicle.add(vehID='veh_0', routeID='route0',  depart=0,departPos=0, departSpeed=speed_s)
+    traci.vehicle.add(vehID='veh_1', routeID='route0',  depart=0,departPos=range_x, departSpeed=speed_lc)
     traci.vehicle.moveTo('veh_0','1to2_0',0)
     traci.vehicle.moveTo('veh_1','1to2_0',range_x)
     traci.vehicle.setSpeedMode('veh_1',12)
@@ -596,8 +635,8 @@ def simulate_run_simple(speed_s,speed_lc,range_x,wfile,idx,crash_count,no_crash_
             if range_x <= 0.01:
                 return True
         if no_crash_count > 0:
-            str_line = str(idx)+',crash_prob:'+str(round(crash_count/no_crash_count,5)) + ',crash:' +str(crash_count)+','+str(no_crash_count)+ '\n'
-            wfile.write(str_line)
+            str_line = str(idx)+',crash_prob:'+str(round(crash_count/no_crash_count,5)) + ',crash:' +str(crash_count)+','+str(no_crash_count)
+            wfile.write(str_line+'\n')
     return False
             
             

@@ -165,7 +165,7 @@ def mle_est():
         u_p = util_progress(vel_lc,thresh=util_progress_param)
         vel_util_lc_train.append((vel_lc,u_p))
         util_ttc_param = 2 if 0 <= vel_s <15 else 4 if 15 <= vel_s <25 else 3.5  
-        u_ttc = util_ttc(ttc)
+        u_ttc = util_ttc(ttc,4)
         train_sample_u_ttcs.append(u_ttc + 1)
         util_dist_param = 10 if 0 <= vel_s <15 else 50 if 15 <= vel_s <25 else 100 
         u_d = util_dist(range_x,thresh=util_dist_param)
@@ -346,7 +346,8 @@ def mle_est():
     plt.plot(res_x,res_y,'bo')
     cor_coeff = pearsonr(res_x, res_y)
     print('rho ttc',cor_coeff)
-    plt.plot(res_x,1.71*res_x-4,'r')
+    #plt.plot(res_x,1.49*res_x-3.72,'r')
+    plt.xlim(0,8)
     plt.xlabel('theoretical quantiles')
     plt.ylabel('data quantile')
     
@@ -365,7 +366,7 @@ def mle_est():
     plt.plot(res_x,res_y,'bo')
     cor_coeff = pearsonr(res_x, res_y)
     print('rho range',cor_coeff)
-    plt.plot(res_x,[.75*x for x in res_x],'r')
+    #plt.plot(res_x,[.75*x for x in res_x],'r')
     plt.xlabel('theoretical quantiles')
     plt.ylabel('data quantile')
     
@@ -391,5 +392,5 @@ def plot_mix_exp(util_r,l1,l2,a):
 
 ''' all runs below '''
 
-#mle_est()
+mle_est()
 

@@ -60,16 +60,22 @@ def plot_ttc():
     dir_path = root_path
     file_name = 'vehicle_cut_in_events.csv'
     ttc_secs = []
+    ttc_inv_list = []
     with open(dir_path+file_name, 'r', newline='') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for row in csv_reader:
             if float(row[6]) != 0:
                 ttc = float(row[5]) / float(row[6])
+                if  0 < ttc <= 10:
+                    ttc_inv = 1/ ttc
+                    ttc_inv_list.append(ttc_inv) 
+                    
                 if -50 <= ttc <= 50:
                     ttc_secs.append(ttc * -1)
     #print(min(ttc_secs),max(ttc_secs))
     plt.hist(ttc_secs, bins=100,density=False, alpha = 0.5, histtype='stepfilled', color='steelblue', edgecolor = 'none')
     plt.show()
+    print(min(ttc_inv_list),max(ttc_inv_list))
     
     
 def store_hist_objects(key,val,store):
@@ -781,7 +787,90 @@ def plot_range_ttc():
     
     
     
-        
+def print_lat_long(dev_id=10188,trip_id=97):
+    dir_path = data_path+root_path
+    file_name = 'wsu_cut_in_list.csv'
+    coords = []
+    ct = 1
+    '''
+    with open(dir_path+file_name, 'r', newline='') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for row in csv_reader:
+            print(ct,'/62164')
+            coords.append((float(row[5]),float(row[6])))
+            ct = ct + 1
+    '''
+    with open(data_path+'/'+root_path+'wsu_data/'+str(dev_id)+'-'+str(trip_id)+'.csv','r') as csvfile:
+        csv_reader = csv.reader(csvfile,delimiter=',')
+        for row in csv_reader:
+            coords.append((float(row[5]),float(row[6])))
+    
+    
+    import folium
+    import datetime as dt
+    import random as rnd
+    
+    t0 = dt.datetime.now()
+    
+    
+    # Sample (0.33% over 1.5 million) 
+    #sample_coords = rnd.sample(list(coords),500)
+    traj_len = len(coords)
+    
+    print(traj_len)
+    # Build map 
+    m = folium.Map(location=coords[0], zoom_start=18, 
+    tiles='cartodbpositron', width=640, height=480)
+    
+    # Plot coordinates using comprehension list
+    
+    def _is_street(addr_string):
+        street_suffixes = ['Road','Street','Drive']
+        for s in street_suffixes:
+            if addr_string.endswith(s):
+                return True
+        return False
+    
+    t1 = dt.datetime.now()
+    print('Total time: %i seconds' % (t1 - t0).seconds)
+    
+    if query_nomanatim((0,coords[0])) is not query_nomanatim((-1,coords[-1])):
+        len_traj = len(coords)
+        #inters = detect_intersections(list(enumerate(coords)),[],0,len_traj-1)
+        #print(inters)
+        iters = [(859, 'Pittsfield Township'), (882, 'West Michigan Avenue'), (4777, 'Pittsfield Township'), (4779, 'Platt Road'), (5131, 'Pittsfield Township'), (5198, 'Bedview Drive')]
+        iter_pts = [x[0] for x in iters]
+        iters_coords = [coords[x] for x in iter_pts]
+        sample_coords = [coords[0]] + iters_coords + [coords[-1]]
+        sample_coords = sample_coords + [coords[x] for x in iter_pts]
+        [folium.CircleMarker(sample_coords[i], radius=1,
+                    color='#0080bb', fill_color='#0080bb').add_to(m) 
+                             for i in range(len(sample_coords))]
+    
+        # Display map in Jupyter
+        m.save('trip.html')
+    
+    else:
+        print('No intersections')
+
+    
+def plot_driver_statistic():
+    path = data_path+root_path+'wsu_data/'
+
+    driver_trip = dict()
+    # r=root, d=directories, f = files
+    for r, d, f in os.walk(path):
+        for file in f:
+            driver,trip = str(file[:-4]).split('-')
+            driver,trip = int(driver),int(trip)
+            if driver in driver_trip:
+                driver_trip[driver] = driver_trip[driver] + 1
+            else:
+                driver_trip[driver] = 1
+    plt.bar(np.arange(len(driver_trip)),driver_trip.values())
+    print(sum([x[1] for x in driver_trip.items()]))
+    plt.show()
+
 
 def smooth_velocity_curves():
     with open(root_path+'interac_seq_data.csv','r') as csvfile:
@@ -1447,14 +1536,57 @@ def temp_process_ce_result_file():
             _sum_c,_sum_n = 0,0
     plt.plot(np.arange(0,100),Y)
     plt.show()
+    
+    
+    
+def unbiased_est_plot():
+    import scipy.stats
+    def mean_confidence_interval(data, confidence=0.95):
+        a = 1.0 * np.array(data)
+        n = len(a)
+        m, se = np.mean(a), scipy.stats.sem(a)
+        h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+        return m, m-h, m+h
+    import ast
+    f = root_path+'lambda_opt_res_final_wu.list'
+    with open(f) as fp:  
+        line = fp.readline()
+        br_2 = ast.literal_eval(line)
+    f = root_path+'ce_opt_res_final_wu.list'
+    with open(f) as fp:  
+        line = fp.readline()
+        ce_2 = ast.literal_eval(line)
+    br_2_b,ce_2_b = [],[]
+    for e in br_2:
+        num_crashes = len(e[1])
+        est = sum([x[1]/x[0] for x in e[1]])/100
+        br_2_b.append(est)
+    for e in ce_2:
+        num_crashes = len(e[1])
+        #_sum = sum([x[1] for x in e[1]])
+        #p_probs = [x[1]/_sum for x in e[1]]
+        #_sum = sum([x[0] for x in e[1]])
+        #q_probs = [x[0]/_sum for x in e[1]]
+        est = sum([x[1]/x[0] for x in e[1]])/100
+        ce_2_b.append(est)
+    plt.plot(np.arange(1,101),br_2_b,linestyle = '--',label = 'BR',color='blue')
+    plt.plot(np.arange(1,101),ce_2_b,linestyle = '-',label = 'CE',color='black')
+    print(np.mean(br_2_b),np.var(br_2_b))
+    print(np.mean(ce_2_b),np.var(ce_2_b))
+    print(mean_confidence_interval(br_2_b))
+    print(mean_confidence_interval(ce_2_b))
+    plt.show()
+    
             
 def final_results_plot():
     import ast
     cmc,br_2,ce = None,None,None
+    
     f = root_path+'cmc_res_final.list'
     with open(f) as fp:  
         line = fp.readline()
         cmc = ast.literal_eval(line)
+    
     f = root_path+'lambda_opt_res_final_prob.list'
     with open(f) as fp:  
         line = fp.readline()
@@ -1463,13 +1595,41 @@ def final_results_plot():
     with open(f) as fp:  
         line = fp.readline()
         ce = ast.literal_eval(line)
-
+    ce_2 = ce
+    '''
+    f = root_path+'lambda_opt_res_final_wu.list'
+    with open(f) as fp:  
+        line = fp.readline()
+        br_2 = ast.literal_eval(line)
+    f = root_path+'ce_opt_res_final_wu.list'
+    with open(f) as fp:  
+        line = fp.readline()
+        ce_2 = ast.literal_eval(line)
+    '''
+    '''
+    br_2_b,ce_2_b = [],[]
+    for idx,e in enumerate(br_2):
+        num_crashes = len(e[1])
+        est = sum([x[1]/x[0] for x in e[1]])/100
+        br_2_b.append((idx,est))
+    for idx,e in enumerate(ce_2):
+        num_crashes = len(e[1])
+        #_sum = sum([x[1] for x in e[1]])
+        #p_probs = [x[1]/_sum for x in e[1]]
+        #_sum = sum([x[0] for x in e[1]])
+        #q_probs = [x[0]/_sum for x in e[1]]
+        est = sum([x[1]/x[0] for x in e[1]])/100
+        ce_2_b.append((idx,est))
+    br_2 = br_2_b
+    ce = ce_2_b 
+    '''
     X = [0,1,2,3]
     Y = [np.mean([x[1] for x in cmc]),np.mean([x[1] for x in br_2]),np.mean([x[1] for x in ce])]
     cmc_b = [x[1] for x in cmc]
     br_2_b = [x[1] for x in br_2]
     ce_b = [x[1] for x in ce]
     print(np.mean(cmc_b),np.mean(br_2_b),np.mean(ce_b))
+    print(np.var(cmc_b),np.var(br_2_b),np.var(ce_b))
     #plt.boxplot([x[1] for x in cmc],meanline=True,showmeans=True)
     #print(np.mean([x[1] for x in br_1]))
     #print(np.mean([x[1] for x in br_2]))
@@ -1477,8 +1637,8 @@ def final_results_plot():
     data = [cmc_b,br_2_b,ce_b]
     fig, ax = plt.subplots()
     ax.boxplot(data,meanline=True,showmeans=True)
-    plt.xticks([1, 2, 3], ['CMC \n $ \mu = 5.6 x 10^{-4}$', 'BR \n $\mu=4.07 x 10^{-2}$', 'CE \n $\mu=3.36 x 10^{-2}$'])
-    plt.ylabel('$p_{\epsilon}$')
+    plt.xticks([1, 2, 3], ['CMC \n $ \mu = 5.6 x 10^{-4}$', 'BR \n $\mu=4.07 x 10^{-2}$', 'CE \n $\mu=3.15 x 10^{-2}$'])
+    plt.ylabel('RE probability from q()')
     plt.show()
     
     fig, ax = plt.subplots()
@@ -1486,7 +1646,7 @@ def final_results_plot():
     plt.plot(np.arange(1,101),br_2_b,linestyle = '--',label = 'BR')
     plt.plot(np.arange(1,101),ce_b,linestyle = ':',label='CE')
     plt.xlabel('iterations')
-    plt.ylabel('$p_{\epsilon}$')
+    plt.ylabel('RE probability from q()')
     plt.legend(bbox_to_anchor=(1.05, 1.15), ncol=3)
     plt.show()
     cmc_var_dict = dict()
@@ -1623,6 +1783,6 @@ def final_result_var_plot():
 ''' all runs below '''      
 
 
-final_results_plot()
-
-
+#unbiased_est_plot()
+#final_results_plot()
+#plot_range_vel()
