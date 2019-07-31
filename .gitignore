@@ -1,2 +1,5 @@
 .project
 .pydevproject
+*.pyc
+*.html
+*.out
