@@ -450,6 +450,10 @@ def flush_results(res_dict,file_name):
                 dict_in_file[k] = v
         with open(file_name,'w') as file:
             file.write(json.dumps(dict_in_file))
+            
+            
+         
+
 prob_cache = dict()
           
 def simulate_run(l,*args):
@@ -476,12 +480,14 @@ def simulate_run(l,*args):
         
     choice_list = []
     weight_list = []
+    br_prob_list = []
     pu_list = []
     w_ttc_inv = [[0.1238042,  0.23736926],[0.09011138, 0.31582509],[0.06177499, 0.54435407]]
     w_range_inv = [0.04528787, 0.00955973]
     
     distracted_policy = False
-    U_prime,global_crash_prob_dict,wfile,opt_lambda,out_iter_num,sample_vel_s_dict = args[0],args[1],args[2],args[3],args[4],args[5]
+    U_prime,global_crash_prob_dict,wfile,opt_lambda,out_iter_num,sample_vel_s_dict,p_u_dict = args[0],args[1],args[2],args[3],args[4],args[5],args[6]
+    br_prob_dict = args[7]
     out_iter_num = 'NA' if out_iter_num is None else out_iter_num
     crash_count = 0
     no_crash_count = 0
@@ -489,16 +495,30 @@ def simulate_run(l,*args):
     for k,v in U_prime.items():
         count += 1
         print('progress of 100000',count)
-        _p_0 = (1/3) * (l[0]*np.exp(l[0]*v[0])) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/2
-        _p_1 = (1/3) * (l[1]*np.exp(l[1]*v[1])) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/2
-        _p_2 = (1/3) * (l[2]*np.exp(l[2]*v[2])) / (np.exp(2*l[2]) -1) if l[2]!=0 else 1/2
-        p_a = (_p_0 , _p_1 , _p_2)
+        '''
+        _p_0_max = (l[0]*np.exp(l[0]*-2)) / (np.exp(2*l[0]) -1) if l[0] <=0 else (l[0]*np.exp(l[0]*0)) / (np.exp(2*l[0]) -1)
+        _p_1_max = (l[1]*np.exp(l[1]*-2)) / (np.exp(2*l[1]) -1) if l[1] <=0 else (l[1]*np.exp(l[1]*0)) / (np.exp(2*l[1]) -1)
+        _p_2_max = (l[2]*np.exp(l[2]*-2)) / (np.exp(2*l[2]) -1) if l[2] <=0 else (l[2]*np.exp(l[2]*0)) / (np.exp(2*l[2]) -1)
+        '''
+        _p_0 = (1/3) * (l[0]*np.exp(l[0]*v[0])) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/100000
+        _p_1 = (1/3) * (l[1]*np.exp(l[1]*v[1])) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/100000
+        _p_2 = (1/3) * (l[2]*np.exp(l[2]*v[2])) / (np.exp(2*l[2]) -1) if l[2]!=0 else 1/100000
+        #p_a = (_p_0 , _p_1 , _p_2)
+        '''
+        p_a = (_p_0/_p_0_max , _p_1/_p_1_max ,_p_2/_p_2_max)
+        for i_p in np.arange(3):
+            if p_a[i_p] > 1:
+                p_a[i_p] = 1/p_a[i_p]
+        '''
+        p_a = (_p_0 + _p_1 +_p_2 )/3
         choice_list.append(k)
         weight_list.append(p_a)
         speed_s = k[0]
         range_x = k[2]
         vel_lc = k[1]
         ttc_inv =   (speed_s - vel_lc ) / k[2]
+        pr_dict_key = (round(vel_lc,1),min(max(round(ttc_inv,2),0.10),3.99),min(round(1/range_x,2),.99))
+        br_prob_list.append(sum(br_prob_dict[pr_dict_key])/3)
         idx = None
         if 0 <= speed_s <15:
             idx = 0
@@ -507,46 +527,53 @@ def simulate_run(l,*args):
         else:
             idx = 2
         
+        '''
         p_vel = sample_vel_s_dict[speed_s]
         p_range_inv = _eval_exp(1/range_x, w_range_inv[0], w_range_inv[1], (.007,1,.001)) 
         p_ttc_inv = _eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1],(0,4,.001)) 
         p_u = p_vel * p_range_inv * p_ttc_inv
-        pu_list.append(p_u)
+        '''
+        '''
+        p_u = eval_vel_s(speed_s) * eval_exp(1/range_x,w_range_inv[0],w_range_inv[1]) * eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1])
+        '''
+        pu_list.append(p_u_dict[k])
     
-        #p_u = eval_vel_s(speed_s) * eval_exp(1/range_x,w_range_inv[0],w_range_inv[1]) * eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1])
         
-    print(min(pu_list),max(pu_list),sum(pu_list))
+        
+    #print(min(pu_list),max(pu_list),sum(pu_list))
     
-    
-    sum_weights_0 = sum([x[0] for x in weight_list])
-    sum_weights_1 = sum([x[1] for x in weight_list])
-    sum_weights_2 = sum([x[2] for x in weight_list])
-    orig_prob_list = [] 
-    for wt in weight_list:
-        orig_prob_list.append(wt[0]/sum_weights_0 * wt[1]/sum_weights_1 * wt[2]/sum_weights_2) 
-    sum_pu_weights = sum(pu_list)
-    #weight_list=[x/sum_weights for x in weight_list]
-    weight_list = orig_prob_list
-    print(min(weight_list),max(weight_list),sum(weight_list))    
-    pu_list=[x/sum_pu_weights for x in pu_list]
+    sum_weights = sum(weight_list)
+    #sum_br_prob_weights = sum(br_prob_list)
+    #sum_weights_0 = sum([x[0] for x in weight_list])
+    #sum_weights_1 = sum([x[1] for x in weight_list])
+    #sum_weights_2 = sum([x[2] for x in weight_list])
+    #orig_prob_list = [] 
+    #for wt in weight_list:
+    #    orig_prob_list.append((wt[0]/sum_weights_0 + wt[1]/sum_weights_1 + wt[2]/sum_weights_2)/3) 
+    #sum_pu_weights = sum(pu_list)
+    weight_list=[x/sum_weights for x in weight_list]
+    #br_prob_list = [x/sum_br_prob_weights for x in br_prob_list]
+    #weight_list = orig_prob_list
+    #print(min(weight_list),max(weight_list),sum(weight_list))    
+    #pu_list=[x/sum_pu_weights for x in pu_list]
     import random
     p_u_dict,q_u_dict,vel_lc_range_samples = dict(),dict(),[]
     vel_lc_range_sample_index = random.choices(population=np.arange(len(choice_list)).tolist(),weights=weight_list,k=1000)
     for i in vel_lc_range_sample_index:
         vel_lc_range_samples.append(choice_list[i])
-        q_u_dict[choice_list[i]] = weight_list[i]
+        q_u_dict[choice_list[i]] = br_prob_list[i]
         p_u_dict[choice_list[i]] = pu_list[i]
     x,y = [],[]
     x = [choice_list[i][2] for i in vel_lc_range_sample_index]
     y = [weight_list[i] for i in vel_lc_range_sample_index] 
-    print(min(y),max(y),sum(y))
-    x_y = list(zip(x,y))
-    x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
+    #print(min(y),max(y),sum(y))
+    #x_y = list(zip(x,y))
+    #x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
     #plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
-    y = [pu_list[i] for i in vel_lc_range_sample_index]
-    print(min(y),max(y),sum(y))
-    x_y = list(zip(x,y))
-    x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
+    #y = [pu_list[i] for i in vel_lc_range_sample_index]
+    
+    #x_y = list(zip(x,y))
+    #x_y_sorted = sorted(x_y, key=lambda tup: tup[0])
     #plt.plot([x[0] for x in x_y_sorted],[x[1] for x in x_y_sorted])
     #plt.show()
     q_u_list = []

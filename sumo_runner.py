@@ -235,6 +235,14 @@ def lambda_op_run(max_iters,opt_l=None):
     sample_ttc_inv,sample_range_inverse = [],[]
     count = 0
     
+    
+    br_prob_dict = get_br_prob_dict(opt_l)
+    
+    
+    
+    w_ttc_inv = [[0.1238042,  0.23736926],[0.09011138, 0.31582509],[0.06177499, 0.54435407]]
+    w_range_inv = [0.04528787, 0.00955973]
+    
     range_inv_pareto_params = 2.25843986
     ttc_inv_5_15_pareto_params = 0.00586138
     ttc_inv_15_25_pareto_params = 0.00622818
@@ -273,7 +281,20 @@ def lambda_op_run(max_iters,opt_l=None):
     range_rate = [x[0]/x[1] for x in zip(sample_ttc_inv,sample_range_inverse)]
     sample_vel_lc_mps = [max((x[0] - x[1]),1) if x[0] >=1 else max(x[0]-.1,.1) for x in zip(sample_vel_s_mps,range_rate)]
     all_configs = list(zip(sample_vel_s_mps,sample_vel_lc_mps,sample_range_inverse))
-    
+    miss_keys = []
+    for state_config in all_configs:
+        vel_s,vel_lc,range_x = state_config[0],state_config[1],1/state_config[2]
+        ttc_inv =   (vel_s - vel_lc ) / range_x
+        pr_dict_key = (round(vel_lc,1),min(max(round(ttc_inv,2),0.10),3.99),min(round(1/range_x,2),.99))
+        if pr_dict_key not in br_prob_dict:
+            print('no',pr_dict_key)
+            miss_keys.append(pr_dict_key)
+        else:
+            #print('yes',pr_dict_key)
+            continue
+        
+    if len(miss_keys) > 0:
+        sys.exit()
     #algo = 'simulated_annealing'
     wfile = open(root_path+'sumo_lambda_results.out', 'w')
     if os.path.exists(root_path+'lambda_opt_res_final.json'):
@@ -287,9 +308,11 @@ def lambda_op_run(max_iters,opt_l=None):
     global_index = 0
     X,Y = [],[]
     U_prime = dict()
+    p_u_dict = dict()
+    sample_br_prob_dict = dict()
     for state_config in all_configs:
         vel_s,vel_lc,range_x = state_config[0],state_config[1],1/state_config[2]
-        print('progress of 100000',count,'(',vel_s,vel_lc,range_x,')')
+        #print('progress of 100000',count,'(',vel_s,vel_lc,range_x,')')
         count = count + 1
         u_p = util_progress(vel_lc)
         util_ttc_param = 2 if 0 <= vel_s <15 else 4 if 15 <= vel_s <25 else 3.5  
@@ -300,6 +323,12 @@ def lambda_op_run(max_iters,opt_l=None):
         print('progress of 100000',count,'(',vel_s,vel_lc,range_x,opt_act_util,')')
         u_prime_vector = [u_p - 1,u_ttc - 1,u_d - 1]
         U_prime[(vel_s,vel_lc,range_x)] = u_prime_vector
+        idx = 0 if 0 <= vel_s <15 else 1 if 15 <= vel_s <25 else 2
+        ttc_inv =   (vel_s - vel_lc ) / range_x
+        p_u_dict[(vel_s,vel_lc,range_x)] = sample_vel_s_dict[vel_s] * _eval_exp(1/range_x, w_range_inv[0], w_range_inv[1], (.007,1,.001)) * _eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1],(0,4,.001))
+        pr_dict_key = (round(vel_lc,1),min(max(round(ttc_inv,2),0.10),3.99),min(round(1/range_x,2),.99))
+        sample_br_prob_dict[pr_dict_key]=br_prob_dict[pr_dict_key]
+   
     if opt_l is None:
         status_dict = {0:{'id':'c_1','lambdas_tried':[[-10,-10,-10,-1.8]],'constraints':[(-100,0),(-100,0),(-100,0)],'crash_probability':[]},\
                        1:{'id':'la_0','lambdas_tried':[[-10,-10,10,-1.8]],'constraints':[(-100,0),(-100,0),(0,100)],'crash_probability':[]},\
@@ -327,7 +356,7 @@ def lambda_op_run(max_iters,opt_l=None):
     else:
         f_q_u_list = []
         for iter in np.arange(max_iters):
-            p_crash_iter,q_u_list = simulate_run(opt_l,U_prime,global_crash_prob_dict,wfile,opt_lambda,iter,sample_vel_s_dict)
+            p_crash_iter,q_u_list = simulate_run(opt_l,U_prime,global_crash_prob_dict,wfile,opt_lambda,iter,sample_vel_s_dict,p_u_dict,sample_br_prob_dict)
             X.append(iter)
             Y.append(p_crash_iter)
             f_q_u_list.append((iter,q_u_list))
@@ -394,19 +423,44 @@ def sample_exp(params,num_samples,range_step_tuple):
     sum_weights = sum(choice_weights)
     ttc_inv_choice_weights = [x/sum_weights for x in choice_weights]
     return np.random.choice(choice_list,p=ttc_inv_choice_weights,size=num_samples) if num_samples > 0 else np.random.choice(choice_list,p=ttc_inv_choice_weights)
-               
+'''
+def _eval_exp(x,lambda_param,a,domain):
+    try:
+        x = round(x,3)
+        domain = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
+        choice_weights = [a*(1/lambda_param) * np.exp(-1*v/lambda_param) for v in domain]
+        sum_weights = sum(choice_weights)
+        choice_probs = [x/sum_weights for x in choice_weights]
+        val_index = domain.index(x)
+        return choice_probs[val_index]
+    except ValueError:
+        br = 5   
+'''
+prob_cache = dict()        
+
+def _eval_exp(x,lambda_param,a,domain):
+    
+    domain_lims = domain
+    x = round(x,3)
+    if (lambda_param,a,domain) in prob_cache:
+        #domain_list = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
+        #val_index = domain_list.index(x)
+        return prob_cache[(lambda_param,a,domain)][x]
+    else:
+        domain = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
+        choice_weights = [a*(1/lambda_param) * np.exp(-1*v/lambda_param) for v in domain]
+        sum_weights = sum(choice_weights)
+        choice_weights = [v/sum_weights for v in choice_weights]
+        choice_probs = dict()
+        for idx,v in enumerate(domain):
+            choice_probs[v] = choice_weights[idx]
+        prob_cache[(lambda_param,a,domain_lims)] = choice_probs
+        prob = choice_probs[x]
+        print(prob)
+        return prob
+             
 def cross_entr_sampling(max_iters=100,N_per_iter=1000,sim_with_opt_params = True):
-    def _eval_exp(x,lambda_param,a,domain):
-        try:
-            x = round(x,3)
-            domain = [round(v,3) for v in np.arange(domain[0],domain[1],domain[2])]
-            choice_weights = [a*(1/lambda_param) * np.exp(-1*v/lambda_param) for v in domain]
-            sum_weights = sum(choice_weights)
-            choice_probs = [x/sum_weights for x in choice_weights]
-            val_index = domain.index(x)
-            return choice_probs[val_index]
-        except ValueError:
-            br = 5
+    
     if not sim_with_opt_params:
         if os.path.exists(root_path+'cross_entr_res.json'):
             os.remove(root_path+'cross_entr_res.json')
@@ -502,8 +556,9 @@ def cross_entr_sampling(max_iters=100,N_per_iter=1000,sim_with_opt_params = True
                     iter_crash_count = iter_crash_count + 1
                     ttc_inv =  state_config[1]
                     if sim_with_opt_params:
-                        p_u = sample_vel_s_dict[speed_s] * _eval_exp(1/range_x, w_range_inv[0], w_range_inv[1], (.007,1,.001)) * _eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1],(0,4,.001))
-                        q_u = sample_vel_s_dict[speed_s] * _eval_exp(1/range_x,v_t_range_inv[0],v_t_range_inv[1],(.007,1,.001)) * _eval_exp(ttc_inv,v_t_ttc_inv[idx][0],v_t_ttc_inv[idx][1],(0,4,.001))
+                        speed_lc = round(speed_lc,1)
+                        p_u = sample_vel_s_dict[speed_lc] * _eval_exp(1/range_x, w_range_inv[0], w_range_inv[1], (.007,1,.001)) * _eval_exp(ttc_inv,w_ttc_inv[idx][0],w_ttc_inv[idx][1],(0,4,.001))
+                        q_u = sample_vel_s_dict[speed_lc] * _eval_exp(1/range_x,v_t_range_inv[0],v_t_range_inv[1],(.007,1,.001)) * _eval_exp(ttc_inv,v_t_ttc_inv[idx][0],v_t_ttc_inv[idx][1],(0,4,.001))
                         q_u_list_iter.append((q_u,p_u))
                     if not sim_with_opt_params:
                         _l_n = _exp([ttc_inv],w_ttc_inv[idx][0],w_ttc_inv[idx][1])[0] * \
@@ -581,10 +636,10 @@ def cross_entr_sampling(max_iters=100,N_per_iter=1000,sim_with_opt_params = True
 
 def run_with_opt_vals():
     opt_l = [-6, -71, 6,-4.1]
-    max_iters = 10
+    max_iters = 100
     N_per_iter = 1000
-    lambda_op_run(max_iters,opt_l)
-    #cross_entr_sampling(max_iters=max_iters)
+    #lambda_op_run(max_iters,opt_l)
+    cross_entr_sampling(max_iters=max_iters)
     #cmc_run()
     
 def run_opt_scheme():
@@ -594,7 +649,7 @@ def run_opt_scheme():
         
 ''' all runs below '''
     
-run_with_opt_vals()
+#run_with_opt_vals()
 
 '''
 w_ttc_inv = [[0.1238042,  0.23736926],[0.09011138, 0.31582509],[0.06177499, 0.54435407]]

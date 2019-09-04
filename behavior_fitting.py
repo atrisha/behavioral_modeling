@@ -12,7 +12,8 @@ from scipy.optimize import *
 import statsmodels.api as sm
 import scipy.stats as stats
 from data_analysis import final_results_plot
-from utils import root_path
+import utils
+import math
 
 
 def get_quantile(x,quants):
@@ -108,7 +109,7 @@ def split_cube_plot_pie(pt):
 def mle_est():
     plt.rcParams['pdf.fonttype'] = 42
     plt.rcParams['ps.fonttype'] = 42
-    dir_path = root_path
+    dir_path = utils.root_path
     file_name = 'wsu_cut_in_list.csv'
     wsu_dict = dict()
     
@@ -119,7 +120,7 @@ def mle_est():
                 wsu_dict[row[0]+'-'+row[1]+'-'+row[2]].append(row)
             else:
                 wsu_dict[row[0]+'-'+row[1]+'-'+row[2]] = [row]
-    dir_path = root_path
+    dir_path = utils.root_path
     file_name = 'vehicle_cut_in_events.csv'
     ttc_secs,vel_kph = [],[]
     vel_5_15,vel_15_25,vel_25_35 = [],[],[]
@@ -137,7 +138,12 @@ def mle_est():
                         vel_15_25.append((vel_mps,range_inv,ttc))
                     elif 25 <= vel_mps < 35:
                         vel_25_35.append((vel_mps,range_inv,ttc))
-    state_samples = vel_5_15
+    
+    all_samples = False
+    if all_samples:
+        state_samples = vel_5_15 + vel_15_25 + vel_25_35
+    else:
+        state_samples = vel_5_15
     N = len(state_samples)
     train_indices = np.random.choice(np.arange(N),size = int(np.floor(.7*N)),replace=False).tolist()
     train_indices.sort()
@@ -153,6 +159,13 @@ def mle_est():
     sigma_p,sigma_d,sigma_t = 0,0,0
     train_sample_u_ttcs,train_sample_u_range = [],[]
     vel_util_lc_train = []
+    plt.plot(np.arange(0,10,.1),[1+util_ttc(ttc,2) for ttc in np.arange(0,10,.1)])
+    plt.show()
+    def _util_ttc(ttc_sec,thresh):
+        if ttc_sec > 100:
+            return 1
+        x = ttc_sec
+        return 2.5/(1+math.exp(-1 * (x-thresh))) - 0.5
     for state_t in train_samples:
         vel_s = state_t[0]
         ttc = state_t[2]
@@ -165,7 +178,10 @@ def mle_est():
         u_p = util_progress(vel_lc,thresh=util_progress_param)
         vel_util_lc_train.append((vel_lc,u_p))
         util_ttc_param = 2 if 0 <= vel_s <15 else 4 if 15 <= vel_s <25 else 3.5  
-        u_ttc = util_ttc(ttc,4)
+        if all_samples:
+            u_ttc = utils.util_ttc(ttc,util_ttc_param)
+        else:
+            u_ttc = _util_ttc(ttc,util_ttc_param)
         train_sample_u_ttcs.append(u_ttc + 1)
         util_dist_param = 10 if 0 <= vel_s <15 else 50 if 15 <= vel_s <25 else 100 
         u_d = util_dist(range_x,thresh=util_dist_param)
@@ -392,5 +408,5 @@ def plot_mix_exp(util_r,l1,l2,a):
 
 ''' all runs below '''
 
-mle_est()
+#mle_est()
 

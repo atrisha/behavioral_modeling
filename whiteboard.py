@@ -28,5 +28,3 @@ def reg_ex_example(i_string='M 21'):
         print(False)
     else:
         print(True)
-
-reg_ex_example()

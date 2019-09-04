@@ -359,6 +359,13 @@ def plot_range_vel():
     '''
     plt.show()
     
+    
+def plot_prob_plot_lambda(l=5):
+    X = np.arange(0,2.1,0.1)
+    Y = [(l*np.exp(l*u)) / (np.exp(2*l) -1) if l!=0 else 1/20 for u in X]
+    plt.plot(X,Y)
+    plt.show()
+    
 def calc_util(x,curve_type):
     if x >= 10:
         return 1
@@ -1541,6 +1548,7 @@ def temp_process_ce_result_file():
     
 def unbiased_est_plot():
     import scipy.stats
+    import matplotlib.ticker as ticker
     def mean_confidence_interval(data, confidence=0.95):
         a = 1.0 * np.array(data)
         n = len(a)
@@ -1548,7 +1556,7 @@ def unbiased_est_plot():
         h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
         return m, m-h, m+h
     import ast
-    f = root_path+'lambda_opt_res_final_wu.list'
+    f = root_path+'lambda_opt_res_final_wu_f.list'
     with open(f) as fp:  
         line = fp.readline()
         br_2 = ast.literal_eval(line)
@@ -1559,8 +1567,19 @@ def unbiased_est_plot():
     br_2_b,ce_2_b = [],[]
     for e in br_2:
         num_crashes = len(e[1])
-        est = sum([x[1]/x[0] for x in e[1]])/100
+        neg_ct,pos_ct =0,0
+        ''' we need to multiply by 10^-2 since, the domain was reduced while calulating prob_br earlier'''
+        est = sum([x[1]/x[0]*100 for x in e[1]])/100
+        for x in e[1]:
+            lr = x[1]/x[0]
+            if lr < 1:
+                neg_ct +=1 
+            else:
+                pos_ct +=1
+                #print(lr)
+        print(neg_ct,pos_ct,est)
         br_2_b.append(est)
+        
     for e in ce_2:
         num_crashes = len(e[1])
         #_sum = sum([x[1] for x in e[1]])
@@ -1570,11 +1589,51 @@ def unbiased_est_plot():
         est = sum([x[1]/x[0] for x in e[1]])/100
         ce_2_b.append(est)
     plt.plot(np.arange(1,101),br_2_b,linestyle = '--',label = 'BR',color='blue')
+    plt.show()
     plt.plot(np.arange(1,101),ce_2_b,linestyle = '-',label = 'CE',color='black')
     print(np.mean(br_2_b),np.var(br_2_b))
     print(np.mean(ce_2_b),np.var(ce_2_b))
     print(mean_confidence_interval(br_2_b))
     print(mean_confidence_interval(ce_2_b))
+    plt.show()
+    def myticks(y,pos):
+        if y == 0: return "$0$"    
+        if y > 0:
+            exponent = int(np.log10(y))
+            coeff = y/10**exponent
+    
+            return r"${:3.0f}\times10^{{ {:2d} }}$".format(coeff,exponent)
+        else:
+            return y
+    
+    
+    f, (ax, ax2) = plt.subplots(1,2,sharex=True)
+    #ax.scatter(X,Y,color='b',label='BR',marker='s')
+    #ax2.scatter(X,Y_2,color='gray',marker='o',label='CE')
+    
+    ax.boxplot(br_2_b,meanline=True,showfliers=False,showmeans=True)
+    #ax2 = ax.twinx()
+    ax2.boxplot(ce_2_b,meanline=True,showfliers=False,showmeans=True)
+    
+    #ax.set_ylim(0,.01)  # outliers only
+    #ax2.set_ylim(0, 10000)  # most of the data
+    '''
+    ax.spines['bottom'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.tick_params(labeltop='off')  # don't put tick labels at the top
+    ax2.xaxis.tick_bottom()
+    '''
+    ax2.legend(loc='upper right', ncol=2)
+    ax.legend(loc='upper right', ncol=2)
+    ax.set_xlabel('BR')
+    ax2.set_xlabel('CE')
+    ax.set_ylabel('$p_{\epsilon}$')
+    ax2.yaxis.tick_right()
+    ax2.yaxis.set_label_position('right')
+    #ax2.yaxis.set_major_formatter(ticker.FuncFormatter(myticks))
+    #ax.yaxis.set_major_formatter(ticker.FuncFormatter(myticks))
+    ax.ticklabel_format(style='sci',axis='y',scilimits=(0,0))
     plt.show()
     
             
@@ -1636,8 +1695,9 @@ def final_results_plot():
     #print(np.mean([x[1] for x in ce]))
     data = [cmc_b,br_2_b,ce_b]
     fig, ax = plt.subplots()
+    #ax.set_aspect(5)
     ax.boxplot(data,meanline=True,showmeans=True)
-    plt.xticks([1, 2, 3], ['CMC \n $ \mu = 5.6 x 10^{-4}$', 'BR \n $\mu=4.07 x 10^{-2}$', 'CE \n $\mu=3.15 x 10^{-2}$'])
+    plt.xticks([1, 2, 3], ['CMC', 'BR', 'CE'])
     plt.ylabel('RE probability from q()')
     plt.show()
     
@@ -1782,7 +1842,7 @@ def final_result_var_plot():
     '''
 ''' all runs below '''      
 
-
 #unbiased_est_plot()
 #final_results_plot()
 #plot_range_vel()
+plot_prob_plot_lambda()
