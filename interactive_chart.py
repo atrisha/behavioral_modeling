@@ -1,13 +1,11 @@
 """
 ===========
-Slider Demo
+Interactive Visualization
 ===========
 
-Using the slider widget to control visual properties of your plot.
+Using the sliders, you can control and change the
+sampling distribution.
 
-In this example, a slider is used to choose the frequency of a sine
-wave. You can control many continuously-varying properties of your plot in
-this way.
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,7 +65,8 @@ def get_beh_label(l1,l2,l3):
         lab = 'Random'    
     return lab
         
-l = [-1.6,6,-6]
+l = [-6,-1.6,6]
+l_init = list(l)
 l2 = [30,-6,6]
 #fig, ax = plt.subplots(3,3)
 
@@ -196,15 +195,15 @@ if mixed:
 else:
     axcolor = 'lightgoldenrodyellow'
     axutil = plt.axes([0.8, 0.37, 0.10, 0.03], facecolor=axcolor)
-    sutil_ttc = Slider(axutil, '$\lambda$ (ttc)', -30, 30, valinit=-1.6, valstep=delta_f)
+    sutil_ttc = Slider(axutil, '$\lambda$ (ttc)', -30, 30, valinit=l[0], valstep=delta_f)
     
     axcolor = 'lightgoldenrodyellow'
     axutil = plt.axes([0.8, 0.335, 0.10, 0.03], facecolor=axcolor)
-    sutil_dist = Slider(axutil, '$\lambda$ (dist gap)', -30, 30, valinit=6, valstep=delta_f)
+    sutil_dist = Slider(axutil, '$\lambda$ (dist gap)', -30, 30, valinit=l[1], valstep=delta_f)
     
     axcolor = 'lightgoldenrodyellow'
     axutil_p = plt.axes([0.8, 0.3, 0.10, 0.03], facecolor=axcolor)
-    sutil_p = Slider(axutil_p, '$\lambda$ (progress)', -30, 30, valinit=-6, valstep=delta_f)
+    sutil_p = Slider(axutil_p, '$\lambda$ (progress)', -30, 30, valinit=l[2], valstep=delta_f)
     
     axcolor = 'lightblue'
     axutil = plt.axes([0.2, 0.1, 0.10, 0.03], facecolor=axcolor)
@@ -363,9 +362,9 @@ def get_prob(vel_s,vel_lc_l,range_x_l):
                 util_dist_param = 10
                 u_d = util_dist(range_x,util_dist_param)
                 if not mixed:
-                    _p_0 = (1/3) * (l[0]*np.exp(l[0]*(u_p+1))) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/2000
-                    _p_1 = (1/3) * (l[1]*np.exp(l[1]*(u_ttc+1))) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/2000
-                    _p_2 = (1/3) * (l[2]*np.exp(l[2]*(u_d+1))) / (np.exp(2*l[2]) -1) if l[2]!=0 else 1/2000
+                    _p_0 = (1/3) * (l[2]*np.exp(l[2]*(u_p+1))) / (np.exp(2*l[2]) -1) if l[2]!=0 else 1/2000
+                    _p_1 = (1/3) * (l[0]*np.exp(l[0]*(u_ttc+1))) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/2000
+                    _p_2 = (1/3) * (l[1]*np.exp(l[1]*(u_d+1))) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/2000
                 else:
                     _p_01 = (1/3) * (l[0]*np.exp(l[0]*(u_p+1))) / (np.exp(2*l[0]) -1) if l[0]!=0 else 1/2000
                     _p_11 = (1/3) * (l[1]*np.exp(l[1]*(u_ttc+1))) / (np.exp(2*l[1]) -1) if l[1]!=0 else 1/2000
@@ -427,10 +426,17 @@ ax33.axis('off')
 
 
 def reset(event):
+    global l
+    l = list(l_init)
     sutil_ttc.reset()
     sutil_dist.reset()
     sutil_p.reset()
-
+    print(l)
+    update_prob_lambda_ttc(l_init[0])
+    update_prob_lambda_dist(l_init[1])
+    update_prob_lambda_prog(l_init[2])
+    
+    
 resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
 button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
 button.on_clicked(reset)
